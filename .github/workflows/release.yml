@@ -123,7 +123,7 @@ jobs:
           buildMethod: DevToolbox.Editor.BuildScript.Build
           customParameters: -buildHistoryPath BuildHistory_${{ matrix.platform }}/data.json -repoUrl https://github.com/${{ github.repository }}/releases/tag/
 
-      - name: Post-build: WebGL publish to gh-pages
+      - name: WebGL publish to gh-pages
         if: ${{ matrix.platform == 'WebGL' }}
         uses: peaceiris/actions-gh-pages@v4
         with:
@@ -134,7 +134,7 @@ jobs:
           # keep history and other files on gh-pages
           keep_files: true
 
-      - name: Post-build: publish BuildHistory to gh-pages
+      - name: publish BuildHistory to gh-pages
         # publish BuildHistory_<platform> to gh-pages under same path
         uses: peaceiris/actions-gh-pages@v4
         with:
