@@ -97,7 +97,7 @@ jobs:
         run: |
           target=BuildHistory_${{ matrix.platform }}
           mkdir $target
-          git checkout origin/gh-pages -- "$target"
+          git checkout origin/gh-pages -- "$target" || true
 
       - name: Cache Library
         uses: actions/cache@v3
