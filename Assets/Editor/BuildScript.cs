@@ -29,6 +29,10 @@ namespace DevToolbox.Editor
 
             // Set prefix for release notes link
             repoUrl = options["repoUrl"];
+            if (!repoUrl.EndsWith("/"))
+            {
+                repoUrl += "/";
+            }
 
             // Apply build target
             var buildTarget = (BuildTarget) Enum.Parse(typeof(BuildTarget), options["buildTarget"]);
@@ -72,11 +76,6 @@ namespace DevToolbox.Editor
             {
                 Console.WriteLine("Missing argument -repoUrl");
                 EditorApplication.Exit(1);
-            }
-
-            if (!repoUrl.EndsWith("/"))
-            {
-                repoUrl += "/";
             }
 
             const string defaultCustomBuildName = "TestBuild";
