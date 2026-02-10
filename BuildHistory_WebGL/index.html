@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KARI Envisioning</title>
+    <!-- Include Chart.js library -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Style the navigation bar */
+        .navbar {
+            background-color: #333;
+            color: #fff;
+            padding: 10px 0;
+            text-align: center;
+            display: flex; /* Use flexbox for layout */
+            align-items: center; /* Center vertically */
+            margin: -8px;
+        }
+
+        /* Style the title on the left */
+        .navbar-title {
+            float: left;
+            margin-left: 20px;
+            font-size: 24px;
+        }
+
+        /* Style the vertical divider */
+        .navbar-divider {
+            height: 20px; /* Adjust the height as needed */
+            width: 2px; /* Width of the divider */
+            background-color: #fff;
+            margin: 0 20px; /* Add margin on both sides */
+        }
+
+        /* Style the navigation buttons */
+        .navbar-button {
+            margin-right: 20px;
+            font-size: 18px;
+            text-decoration: none;
+            color: #fff;
+        }
+
+        /* Style the container to limit chart height */
+        .chart-container {
+            max-height: 300px; /* Adjust the value as needed */
+            margin-top: 20px; /* Add margin between charts and headers */
+            margin-bottom: 20px; /* Add margin between charts and headers */
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <div class="navbar">
+        <div class="navbar-title">KARI Envisioning</div>
+        <div class="navbar-divider"></div>
+        <a href="index.html" class="navbar-button">Home</a>
+        <a href="Game/TankGame/index.html" class="navbar-button">Game</a>
+        <a href="BuildHistory_WebGL/index.html" class="navbar-button">WebGL Build History</a>
+        <a href="BuildHistory_StandaloneWindows64/index.html" class="navbar-button">Windows Build History</a>
+        <!-- <a href="CodeCoverage/Report/index.html" class="navbar-button" target="_blank">Code Coverage</a> -->
+    </div>
+
+    <h1>Build History</h1>
+
+    <!-- Container for "Build Time" chart -->
+    <div class="chart-container">
+        <canvas id="buildTimeChart" width="400" height="300"></canvas>
+    </div>
+
+    <!-- Container for "Build Size" chart -->
+    <div class="chart-container">
+        <canvas id="buildSizeChart" width="400" height="300"></canvas>
+    </div>
+
+    <!-- Container for "Asset Type Sizes" chart -->
+    <div style="max-height: 320px;" id="charts-container" />
+
+    <script>
+        // Function to fetch and parse JSON data
+        function fetchData() {
+            fetch('data.json')
+                .then(response => response.json())
+                .then(data => {
+                    // Extract data from JSON
+                    const dates = data.map(item => new Date(item.Timestamp));
+                    const buildTime = data.map(item => secondsToMinutes(item.BuildTime));
+                    const buildSize = data.map(item => bytesToMB(item.BuildSize));
+                    const releaseNotes = data.map(item => item.ReleaseNotes);
+                    const versions = data.map(item => item.Version);
+                    const assetTypeSizes = data.map(item => item.AssetTypeSizes ?? []);
+
+                    const datasets = {};
+                    // Loop through the data to create datasets for each Name
+                    assetTypeSizes.forEach(assetTypes => {
+                        assetTypes.forEach(assetType => {
+                            const name = assetType.Name;
+                            if (!datasets[name]) {
+                                datasets[name] = {
+                                    label: name,
+                                    data: [],
+                                };
+                            }
+                            datasets[name].data.push(assetType.Size);
+                        });
+                    });
+
+                    const dateLabels = dates.map(date => {
+                        const year = date.getFullYear();
+                        const month = String(date.getMonth() + 1).padStart(2, '0');
+                        const day = String(date.getDate()).padStart(2, '0');
+                        return `${year}/${month}/${day}`;
+                    });
+
+                    // Create "Build Time" chart
+                    const buildTimeCtx = document.getElementById('buildTimeChart').getContext('2d');
+                    const buildTimeChart = new Chart(buildTimeCtx, {
+                        type: 'line',
+                        data: {
+                            labels: dateLabels,
+                            datasets: [{
+                                label: 'Build Time',
+                                data: buildTime,
+                                borderColor: 'blue',
+                                borderWidth: 2,
+                                fill: false,
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                y: {
+                                    title: {
+                                        display: true,
+                                        text: 'minutes'
+                                    }
+                                }
+                            },
+                            plugins: {
+                                legend: {
+                                    display: false,
+                                },
+                                title: {
+                                    display: true,
+                                    text: 'Build Time (minutes)'
+                                },
+                                tooltip: {
+                                    callbacks: {
+                                        title: function(tooltipItem, data) {
+                                            return versions[tooltipItem[0].dataIndex];
+                                        },
+                                        beforeBody: function(tooltipItem, data) {
+                                            return dateLabels[tooltipItem[0].dataIndex];
+                                        },
+                                    },
+                                },
+                            },
+                        }
+                    });
+
+                    // Create "Build Size" chart
+                    const buildSizeCtx = document.getElementById('buildSizeChart').getContext('2d');
+                    const buildSizeChart = new Chart(buildSizeCtx, {
+                        type: 'line',
+                        data: {
+                            labels: dateLabels,
+                            datasets: [{
+                                label: 'Build Size',
+                                data: buildSize,
+                                borderColor: 'green',
+                                borderWidth: 2,
+                                fill: false,
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                y: {
+                                    title: {
+                                        display: true,
+                                        text: 'MB'
+                                    }
+                                }
+                            },
+                            plugins: {
+                                legend: {
+                                    display: false,
+                                },
+                                title: {
+                                    display: true,
+                                    text: 'Build Size (MB)'
+                                },
+                                tooltip: {
+                                    callbacks: {
+                                        title: function(tooltipItem, data) {
+                                            return versions[tooltipItem[0].dataIndex];
+                                        },
+                                        beforeBody: function(tooltipItem, data) {
+                                            return dateLabels[tooltipItem[0].dataIndex];
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    });
+
+                    Object.values(datasets).forEach(assetType => {
+                        const name = assetType.label;
+
+                        // Create a canvas element for the chart
+                        const canvas = document.createElement('canvas');
+                        canvas.id = `chart-${name}`;
+                        // If we increase this we also need to increase the max-height of charts-container
+                        canvas.style.marginBottom = '20px';
+
+                        // Append the canvas element to a container (e.g., a div)
+                        const container = document.getElementById('charts-container');
+                        container.appendChild(canvas);
+
+                        // Destroy the existing chart if it exists
+                        const existingChart = window.myCharts[name];
+                        if (existingChart) {
+                            existingChart.destroy();
+                            const oldCanvas = document.getElementById(`chart-${name}`);
+                            container.removeChild(oldCanvas);
+                        }
+
+                        const average = array => array.reduce((a, b) => a + b) / array.length;
+                        const avg = average(assetType.data);
+                        var data = assetType.data;
+                        var unit = 'bytes';
+                        if (avg > 1024 * 1024) {
+                            data = data.map(x => bytesToMB(x))
+                            unit = 'MB';
+                        } else if (avg > 1024) {
+                            data = data.map(x => bytesToKB(x))
+                            unit = 'KB'
+                        }
+
+                        // Create a chart for the current Name
+                        const chartCtx = document.getElementById(`chart-${name}`).getContext('2d');
+                        window.myCharts[name] = new Chart(chartCtx, {
+                            type: 'line',
+                            data: {
+                                labels: dateLabels,
+                                datasets: [{
+                                    label: name,
+                                    data: data,
+                                    borderColor: getRandomColor(), // You can define a function to generate random colors
+                                    borderWidth: 2,
+                                    fill: true,
+                                }],
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                scales: {
+                                    y: {
+                                        title: {
+                                            display: true,
+                                            text: unit
+                                        }
+                                    }
+                                },
+                                plugins: {
+                                    legend: {
+                                        display: false,
+                                    },
+                                    title: {
+                                        display: true,
+                                        text: `${name} (${unit})`
+                                    },
+                                },
+                            }
+                        });
+                    });
+
+                    // Add click event handler to open Release Notes link on data point click
+                    buildTimeChart.options.onClick = (event, elements) => {
+                        if (elements.length > 0) {
+                            const dataIndex = elements[0].index;
+                            const releaseNotesUrl = releaseNotes[dataIndex];
+                            if (releaseNotesUrl) {
+                                window.open(releaseNotesUrl, '_blank');
+                            }
+                        }
+                    };
+
+                    buildSizeChart.options.onClick = (event, elements) => {
+                        if (elements.length > 0) {
+                            const dataIndex = elements[0].index;
+                            const releaseNotesUrl = releaseNotes[dataIndex];
+                            if (releaseNotesUrl) {
+                                window.open(releaseNotesUrl, '_blank');
+                            }
+                        }
+                    };
+                })
+                .catch(error => {
+                    console.error('Error fetching data:', error);
+                });
+        }
+
+        // Object to store chart instances
+        window.myCharts = {};
+
+        function getRandomColor() {
+            const letters = '0123456789ABCDEF';
+            let color = '#';
+            for (let i = 0; i < 6; i++) {
+                color += letters[Math.floor(Math.random() * 16)];
+            }
+            return color;
+        }
+
+        function bytesToMB(bytes) {
+            return (bytes / (1024 * 1024)).toFixed(2);
+        }
+
+        function bytesToKB(bytes) {
+            return (bytes / 1024).toFixed(2);
+        }
+
+        function secondsToMinutes(seconds) {
+            return (seconds / 60).toFixed(2);
+        }
+
+        // Call the fetchData function to load and display the charts
+        fetchData();
+    </script>
+</body>
+</html>
