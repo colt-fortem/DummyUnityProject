@@ -21,25 +21,20 @@ on:
 
 env:
   BUILD_NAME: TankGame
-  PLATFORM: StandaloneWindows64
 
 jobs:
-  release:
+  prepare:
+    name: Prepare version and changelog
     runs-on: ubuntu-latest
+    outputs:
+      version-tag: ${{ steps.get-latest-tag.outputs.version-tag }}
+      version: ${{ steps.get-version.outputs.version }}
+      changelog: ${{ steps.get-changelog.outputs.changelog }}
     steps:
-      # Checkout
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      # Cache
-      - uses: actions/cache@v3
-        with:
-          path: Library
-          key: Library-${{ env.PLATFORM }}
-          restore-keys: |
-            Library-
 
       - name: Install Versionize
         run: dotnet tool install --global Versionize
@@ -60,7 +55,8 @@ jobs:
 
       - name: Get latest tag
         id: get-latest-tag
-        run: echo "version-tag=$(git describe --tags --abbrev=0)" >> $GITHUB_OUTPUT
+        run: |
+          echo "version-tag=$(git describe --tags --abbrev=0)" >> $GITHUB_OUTPUT
 
       - name: Get version without 'v' prefix
         id: get-version
@@ -68,14 +64,52 @@ jobs:
           version=${{ steps.get-latest-tag.outputs.version-tag }}
           version=${version#v}
           echo "version=$version" >> $GITHUB_OUTPUT
-          echo "$version"
 
-      - name: Checkout build history from gh-pages
+      - name: Get changelog
+        id: get-changelog
         run: |
-          mkdir BuildHistory
-          git checkout origin/gh-pages -- BuildHistory
+          set -e
+          if ! CHANGELOG=$(versionize changelog 2>&1); then
+            echo "::error ::$CHANGELOG"
+            exit 1
+          fi
+          # expose as step output
+          echo "changelog<<EOF" >> $GITHUB_OUTPUT
+          printf "%s\n\n" "# What's changed?" >> $GITHUB_OUTPUT
+          printf "%s\n" "$CHANGELOG" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
-      - name: Create build
+  build:
+    name: Build matrix (WebGL + Windows)
+    needs: prepare
+    runs-on: windows-2022
+    strategy:
+      matrix:
+        platform: [StandaloneWindows64, WebGL]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Restore gh-pages BuildHistory if present
+        run: |
+          set -e
+          target=BuildHistory_${{ matrix.platform }}
+          mkdir $target
+          # try to fetch the BuildHistory folder from gh-pages if it exists; ignore errors
+          git fetch origin gh-pages || true
+          git checkout origin/gh-pages -- "$target" || true
+
+      - name: Cache Library
+        uses: actions/cache@v3
+        with:
+          path: Library
+          key: Library-${{ matrix.platform }}
+          restore-keys: |
+            Library-
+
+      - name: Run Unity build
         uses: game-ci/unity-builder@v4
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
@@ -83,49 +117,74 @@ jobs:
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
           buildName: ${{ env.BUILD_NAME }}
-          targetPlatform: ${{ env.PLATFORM }}
+          targetPlatform: ${{ matrix.platform }}
           versioning: Custom
-          version: ${{ steps.get-version.outputs.version }}
+          version: ${{ needs.prepare.outputs.version }}
           buildMethod: DevToolbox.Editor.BuildScript.Build
-          customParameters: -buildHistoryPath BuildHistory/data.json -repoUrl https://github.com/colt-fortem/DummyUnityProject/releases/tag/
+          customParameters: -buildHistoryPath BuildHistory_${{ matrix.platform }}/data.json -repoUrl https://github.com/${{ github.repository }}/releases/tag/
 
-      - name: Get changelog
-        run: |
-          set -e
-          PREAMBLE="# What's changed?"
-          if ! CHANGELOG=$(versionize changelog 2>&1); then
-            echo "::error ::$CHANGELOG"
-            exit 1
-          fi
-          {
-            echo "CHANGELOG<<EOF"
-            printf "%s\n\n" "$PREAMBLE"
-            echo "$CHANGELOG"
-            echo "EOF"
-          } >> $GITHUB_ENV
+      - name: Post-build: WebGL publish to gh-pages
+        if: ${{ matrix.platform == 'WebGL' }}
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./build/WebGL
+          publish_branch: gh-pages
+          destination_dir: Game
+          # keep history and other files on gh-pages
+          keep_files: true
 
-      - name: Zip
+      - name: Post-build: publish BuildHistory to gh-pages
+        # publish BuildHistory_<platform> to gh-pages under same path
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./BuildHistory_${{ matrix.platform }}
+          publish_branch: gh-pages
+          destination_dir: BuildHistory_${{ matrix.platform }}
+          keep_files: true
+
+      - name: Zip Windows build
+        if: ${{ matrix.platform == 'StandaloneWindows64' }}
         id: zip
         run: |
-          artifact_name=${{ env.BUILD_NAME }}_${{ steps.get-latest-tag.outputs.version-tag }}_${{ env.PLATFORM }}.zip
-          pushd ./build/${{ env.PLATFORM }}
+          set -e
+          artifact_name=${{ env.BUILD_NAME }}_${{ needs.prepare.outputs.version-tag }}_${{ matrix.platform }}.zip
+          pushd ./build/${{ matrix.platform }}
           zip -r ../../$artifact_name .
           popd
           echo "artifact-name=$artifact_name" >> $GITHUB_OUTPUT
 
+      - name: Upload Windows artifact
+        if: ${{ matrix.platform == 'StandaloneWindows64' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-build
+          path: ${{ steps.zip.outputs.artifact-name }}
+
+  release:
+    name: Create GitHub Release (attach Windows zip only)
+    needs: [prepare, build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download Windows artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-build
+          path: ./release-artifacts
+
       - name: Create a Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ env.VERSION_TAG }}
-          prerelease: ${{ contains(env.VERSION_TAG, '-') }}
-          body: ${{ env.CHANGELOG }}
-          files: ${{ steps.zip.outputs.artifact-name }}
+          tag_name: ${{ needs.prepare.outputs.version-tag }}
+          prerelease: ${{ contains(needs.prepare.outputs.version-tag, '-') }}
+          body: ${{ needs.prepare.outputs.changelog }}
+          files: ./release-artifacts/*
           fail_on_unmatched_files: true
-
-      - name: Publish build stats to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v4
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./BuildHistory
-          publish_branch: gh-pages
-          destination_dir: ./BuildHistory
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
