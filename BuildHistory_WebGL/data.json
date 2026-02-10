@@ -1,0 +1,47 @@
+[
+  {
+    "Version": "v0.1.0",
+    "Timestamp": "02/10/2026 02:17:36",
+    "BuildTime": 1059,
+    "BuildSize": 12660996,
+    "ReleaseNotes": "https://github.com/colt-fortem/DummyUnityProject/releases/tag/v0.1.0",
+    "AssetTypeSizes": [
+      {
+        "Name": "Textures",
+        "Size": 6714264
+      },
+      {
+        "Name": "Meshes",
+        "Size": 0
+      },
+      {
+        "Name": "Animations",
+        "Size": 0
+      },
+      {
+        "Name": "Sounds",
+        "Size": 0
+      },
+      {
+        "Name": "Shaders",
+        "Size": 827364
+      },
+      {
+        "Name": "Other Assets",
+        "Size": 310247
+      },
+      {
+        "Name": "Scripts",
+        "Size": 253556
+      },
+      {
+        "Name": "File headers",
+        "Size": 126069
+      },
+      {
+        "Name": "Levels",
+        "Size": 0
+      }
+    ]
+  }
+]
