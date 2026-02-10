@@ -94,12 +94,9 @@ jobs:
 
       - name: Restore gh-pages BuildHistory if present
         run: |
-          set -e
           target=BuildHistory_${{ matrix.platform }}
           mkdir $target
-          # try to fetch the BuildHistory folder from gh-pages if it exists; ignore errors
-          git fetch origin gh-pages || true
-          git checkout origin/gh-pages -- "$target" || true
+          git checkout origin/gh-pages -- "$target"
 
       - name: Cache Library
         uses: actions/cache@v3
