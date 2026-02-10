@@ -82,7 +82,8 @@ jobs:
   build:
     name: Build matrix (WebGL + Windows)
     needs: prepare
-    runs-on: windows-2022
+    # windows-latest
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         platform: [StandaloneWindows64, WebGL]
