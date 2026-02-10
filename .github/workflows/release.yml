@@ -22,6 +22,11 @@ on:
 env:
   BUILD_NAME: TankGame
 
+permissions:
+  contents: write # needed to push files, create tags, create releases
+  pages: write # needed to publish to GitHub Pages
+  actions: read
+
 jobs:
   prepare:
     name: Prepare version and changelog
