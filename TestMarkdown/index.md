@@ -1,3 +1,5 @@
+{% include navbar.html %}
+
 # Title
 
 ## Subtitle
