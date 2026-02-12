@@ -1,4 +1,6 @@
-{% include navbar.html %}
+---
+layout: default
+---
 
 # Title
 
