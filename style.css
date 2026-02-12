@@ -1,0 +1,42 @@
+body { margin: 8px }
+
+/* Style the navigation bar */
+.navbar {
+    background-color: #333;
+    color: #fff;
+    padding: 10px 0;
+    text-align: center;
+    display: flex; /* Use flexbox for layout */
+    align-items: center; /* Center vertically */
+    margin: -8px;
+}
+
+/* Style the title on the left */
+.navbar-title {
+    float: left;
+    margin-left: 20px;
+    font-size: 24px;
+}
+
+/* Style the vertical divider */
+.navbar-divider {
+    height: 20px; /* Adjust the height as needed */
+    width: 2px; /* Width of the divider */
+    background-color: #fff;
+    margin: 0 20px; /* Add margin on both sides */
+}
+
+/* Style the navigation buttons */
+.navbar-button {
+    margin-right: 20px;
+    font-size: 18px;
+    text-decoration: none;
+    color: #fff;
+}
+
+/* Style the container to limit chart height */
+.chart-container {
+    max-height: 300px; /* Adjust the value as needed */
+    margin-top: 20px; /* Add margin between charts and headers */
+    margin-bottom: 20px; /* Add margin between charts and headers */
+}
