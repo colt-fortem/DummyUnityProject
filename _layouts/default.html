@@ -4,7 +4,13 @@
     <link rel="stylesheet" href="{{ '/style.css' | relative_url }}">
 </head>
 <body>
-    {% include navbar.html %}
-    {{ content }}
+    <header>
+        {% include navbar.html %}
+    </header>
+
+    <!-- This centers your Markdown/HTML content -->
+    <main class="container">
+        {{ content }}
+    </main>
 </body>
 </html>

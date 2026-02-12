@@ -1,5 +1,11 @@
 body { margin: 8px }
 
+.container {
+    max-width: 800px;    /* Limits how wide the text gets */
+    margin: 0 auto;      /* Centers the container horizontally */
+    padding: 0 20px;     /* Adds a little breathing room on mobile */
+}
+
 /* Style the navigation bar */
 .navbar {
     background-color: #333;
